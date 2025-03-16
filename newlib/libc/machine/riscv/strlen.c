@@ -30,24 +30,33 @@ size_t strlen(const char *str)
     } while ((uintptr_t)str & (sizeof (uintptr_t) - 1));
 
   uintptr_t *ps = (uintptr_t *)str;
-  while (!__libc_detect_null (*ps++))
+  uintptr_t psval;
+
+  while (!__libc_detect_null ((psval = *ps++)))
     ;
   asm volatile ("" : "+r"(ps)); /* prevent "optimization" */
 
   str = (const char *)ps;
   size_t ret = str - start, sp = sizeof (*ps);
 
-  char c0 = str[0 - sp], c1 = str[1 - sp], c2 = str[2 - sp], c3 = str[3 - sp];
-  if (c0 == 0)  return ret + 0 - sp;
-  if (c1 == 0)  return ret + 1 - sp;
-  if (c2 == 0)  return ret + 2 - sp;
-  if (c3 == 0)  return ret + 3 - sp;
+  #if __riscv_zbb
+    psval = ~__LIBC_RISCV_ZBB_ORC_B(psval);
+    psval = __LIBC_RISCV_ZBB_CNT_Z(psval);
 
-  c0 = str[4 - sp], c1 = str[5 - sp], c2 = str[6 - sp];
-  if (c0 == 0)  return ret + 4 - sp;
-  if (c1 == 0)  return ret + 5 - sp;
-  if (c2 == 0)  return ret + 6 - sp;
+    return ret + (psval >> 3) - sp;
+  #else
+    char c0 = str[0 - sp], c1 = str[1 - sp], c2 = str[2 - sp], c3 = str[3 - sp];
+    if (c0 == 0)  return ret + 0 - sp;
+    if (c1 == 0)  return ret + 1 - sp;
+    if (c2 == 0)  return ret + 2 - sp;
+    if (c3 == 0)  return ret + 3 - sp;
 
-  return ret + 7 - sp;
+    c0 = str[4 - sp], c1 = str[5 - sp], c2 = str[6 - sp];
+    if (c0 == 0)  return ret + 4 - sp;
+    if (c1 == 0)  return ret + 5 - sp;
+    if (c2 == 0)  return ret + 6 - sp;
+
+    return ret + 7 - sp;
+  #endif
 #endif /* not PREFER_SIZE_OVER_SPEED */
 }
