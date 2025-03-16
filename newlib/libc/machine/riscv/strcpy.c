@@ -18,37 +18,29 @@ char *strcpy(char *dst, const char *src)
 
 #if !defined(PREFER_SIZE_OVER_SPEED) && !defined(__OPTIMIZE_SIZE__)
 #if !(__riscv_misaligned_slow || __riscv_misaligned_fast)
-  int misaligned = ((uintptr_t)dst | (uintptr_t)src) & (sizeof (long) - 1);
+  int misaligned = ((uintptr_t)dst | (uintptr_t)src) & (sizeof (uintptr_t) - 1);
   if (__builtin_expect(!misaligned, 1))
 #endif
     {
-      long *ldst = (long *)dst;
-      const long *lsrc = (const long *)src;
+      uintptr_t *pdst = (uintptr_t *)dst;
+      const uintptr_t *psrc = (const uintptr_t *)src;
 
-      while (!__libc_detect_null(*lsrc))
-	*ldst++ = *lsrc++;
+      while (!__libc_detect_null(*psrc))
+        *pdst++ = *psrc++;
 
-      dst = (char *)ldst;
-      src = (const char *)lsrc;
+      dst = (char *)pdst;
+      src = (const char *)psrc;
 
-      char c0 = src[0];
-      char c1 = src[1];
-      char c2 = src[2];
-      if (!(*dst++ = c0)) return dst0;
-      if (!(*dst++ = c1)) return dst0;
-      char c3 = src[3];
-      if (!(*dst++ = c2)) return dst0;
-      if (sizeof (long) == 4) goto out;
-      char c4 = src[4];
-      if (!(*dst++ = c3)) return dst0;
-      char c5 = src[5];
-      if (!(*dst++ = c4)) return dst0;
-      char c6 = src[6];
-      if (!(*dst++ = c5)) return dst0;
-      if (!(*dst++ = c6)) return dst0;
+      if (!(*dst++ = src[0])) return dst0;
+      if (!(*dst++ = src[1])) return dst0;
+      if (!(*dst++ = src[2])) return dst0;
+      if (!(*dst++ = src[3])) return dst0;
+      if (!(*dst++ = src[4])) return dst0;
+      if (!(*dst++ = src[5])) return dst0;
+      if (!(*dst++ = src[6])) return dst0;
 
 out:
-      *dst++ = 0;
+      *dst = 0;
       return dst0;
     }
 #endif /* not PREFER_SIZE_OVER_SPEED */
