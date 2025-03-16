@@ -10,49 +10,8 @@
 */
 
 #include <string.h>
-#include <stdint.h>
 
 char *strcpy(char *dst, const char *src)
 {
-  char *dst0 = dst;
-
-#if !defined(PREFER_SIZE_OVER_SPEED) && !defined(__OPTIMIZE_SIZE__)
-#if !(__riscv_misaligned_slow || __riscv_misaligned_fast)
-  int misaligned = ((uintptr_t)dst | (uintptr_t)src) & (sizeof (uintptr_t) - 1);
-  if (__builtin_expect(!misaligned, 1))
-#endif
-    {
-      uintptr_t *pdst = (uintptr_t *)dst;
-      const uintptr_t *psrc = (const uintptr_t *)src;
-
-      while (!__libc_detect_null(*psrc))
-        *pdst++ = *psrc++;
-
-      dst = (char *)pdst;
-      src = (const char *)psrc;
-
-      if (!(*dst++ = src[0])) return dst0;
-      if (!(*dst++ = src[1])) return dst0;
-      if (!(*dst++ = src[2])) return dst0;
-      if (!(*dst++ = src[3])) return dst0;
-      if (!(*dst++ = src[4])) return dst0;
-      if (!(*dst++ = src[5])) return dst0;
-      if (!(*dst++ = src[6])) return dst0;
-
-out:
-      *dst = 0;
-      return dst0;
-    }
-#endif /* not PREFER_SIZE_OVER_SPEED */
-
-  char ch;
-  do
-    {
-      ch = *src;
-      src++;
-      dst++;
-      *(dst - 1) = ch;
-    } while (ch);
-
-  return dst0;
+  return __libc_strcpy(dst, src, 1);
 }
