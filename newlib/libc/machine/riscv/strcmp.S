@@ -40,7 +40,20 @@ strcmp:
   .macro check_one_word i n
     REG_L a2, \i*SZREG(a0)
 
-    orc.b a4, a2
+    #if __riscv_zbb
+      orc.b a4, a2
+    #else
+      #if SZREG == 4
+        li a5, 0x7f7f7f7f
+      #else
+        ld a5, mask
+      #endif
+      and a4, a2, a5
+      or  t1, a2, a5
+      add a4, a4, a5
+      add a4, a4, t1
+    #endif
+
     li    a5, -1
     bne   a4, a5, .Lnull\i
 
@@ -154,5 +167,8 @@ strcmp:
 
 #if SZREG == 8
 .section .srodata.cst8,"aM",@progbits,8
+.align 3
+mask:
+.dword 0x7f7f7f7f7f7f7f7f
 #endif
 #endif
