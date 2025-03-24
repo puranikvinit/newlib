@@ -30,7 +30,6 @@ strcmp:
 
 .size	strcmp, .-strcmp
 #else
-  li    t2, -1
 
 #if !(__riscv_misaligned_slow || __riscv_misaligned_fast)
   or    a4, a0, a1
@@ -38,21 +37,12 @@ strcmp:
   bnez  a4, .Lmisaligned
 #endif
 
-#if SZREG == 4
-  li a5, 0x7f7f7f7f
-#else
-  ld a5, mask
-#endif
-
   .macro check_one_word i n
     REG_L a2, \i*SZREG(a0)
 
-    and   t0, a2, a5
-    or    t1, a2, a5
-    add   t0, t0, a5
-    or    t0, t0, t1
-
-    bne   t0, t2, .Lnull\i
+    orc.b a4, a2
+    li    a5, -1
+    bne   a4, a5, .Lnull\i
 
     REG_L a3, \i*SZREG(a1)
     .if \i+1-\n
@@ -99,37 +89,8 @@ strcmp:
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
-#if __riscv_xlen == 64
-  sll   a4, a2, 48
-  sll   a5, a3, 48
-  bne   a4, a5, .Lmismatch_upper
-  sll   a4, a2, 32
-  sll   a5, a3, 32
-  bne   a4, a5, .Lmismatch_upper
-#endif
-  sll   a4, a2, 16
-  sll   a5, a3, 16
-  bne   a4, a5, .Lmismatch_upper
-
-  srl   a4, a2, 8*SZREG-16
-  srl   a5, a3, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, 1f
-  ret
-
-.Lmismatch_upper:
-  srl   a4, a4, 8*SZREG-16
-  srl   a5, a5, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, 1f
-  ret
-
-1:and   a4, a4, 0xff
-  and   a5, a5, 0xff
-  sub   a0, a4, a5
-  ret
+  rev8  a2, a2
+  rev8  a3, a3
 
 #else
 
@@ -193,8 +154,5 @@ strcmp:
 
 #if SZREG == 8
 .section .srodata.cst8,"aM",@progbits,8
-.align 3
-mask:
-.dword 0x7f7f7f7f7f7f7f7f
 #endif
 #endif
