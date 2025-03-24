@@ -18,8 +18,8 @@ strcmp:
 #if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__)
 1:
   lbu   a2, 0(a0)
-  lbu   a3, 0(a1)
   add   a0, a0, 1
+  lbu   a3, 0(a1)
   add   a1, a1, 1
   bne   a2, a3, 2f
   bnez  a2, 1b
@@ -46,7 +46,6 @@ strcmp:
 
   .macro check_one_word i n
     REG_L a2, \i*SZREG(a0)
-    REG_L a3, \i*SZREG(a1)
 
     and   t0, a2, a5
     or    t1, a2, a5
@@ -54,6 +53,8 @@ strcmp:
     or    t0, t0, t1
 
     bne   t0, t2, .Lnull\i
+
+    REG_L a3, \i*SZREG(a1)
     .if \i+1-\n
       bne   a2, a3, .Lmismatch
     .else
@@ -166,8 +167,8 @@ strcmp:
 .Lmisaligned:
   # misaligned
   lbu   a2, 0(a0)
-  lbu   a3, 0(a1)
   add   a0, a0, 1
+  lbu   a3, 0(a1)
   add   a1, a1, 1
   bne   a2, a3, 1f
   bnez  a2, .Lmisaligned
