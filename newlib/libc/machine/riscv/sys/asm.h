@@ -12,7 +12,9 @@
 #ifndef _SYS_ASM_H
 #define _SYS_ASM_H
 
+#if !__ASSEMBLER__
 #include <stdint.h>
+#endif
 
 /*
  * Macros to handle different pointer/register sizes for 32/64-bit code
@@ -22,13 +24,17 @@
 # define SZREG	8
 # define REG_S sd
 # define REG_L ld
+#if !__ASSEMBLER__
 typedef uint64_t uintxlen_t;
+#endif
 #elif __riscv_xlen == 32
 # define PTRLOG 2
 # define SZREG	4
 # define REG_S sw
 # define REG_L lw
+#if !__ASSEMBLER__
 typedef uint32_t uintxlen_t;
+#endif
 #else
 # error __riscv_xlen must equal 32 or 64
 #endif
