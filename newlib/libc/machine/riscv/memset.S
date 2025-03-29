@@ -14,16 +14,16 @@
 .type	memset, @function
 memset:
 #if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__)
-  mv t1, a0
-  beqz a2, 2f
+  mv a3, a0
+  beqz a2, .Ldone
 
-1:
-  sb a1, 0(t1)
-  add   a2, a2, -1
-  add   t1, t1, 1
-  bnez a2, 1b
+.Lset:
+  sb a1, 0(a3)
+  addi  a2, a2, -1
+  addi  a3, a3, 1
+  bnez a2, .Lset
 
-2:
+.Ldone:
   ret
 
 #else
