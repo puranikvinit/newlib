@@ -108,8 +108,7 @@ strcmp:
       clz a5, a4
     #endif
 
-    srli a5, a5, 3
-    slli a5, a5, 3
+    andi a5, a5, -8
 
     srl a2, a2, a5
     and a2, a2, 0xff
