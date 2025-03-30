@@ -18,8 +18,8 @@ strcmp:
 #if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__)
 1:
   lbu   a2, 0(a0)
-  lbu   a3, 0(a1)
   add   a0, a0, 1
+  lbu   a3, 0(a1)
   add   a1, a1, 1
   bne   a2, a3, 2f
   bnez  a2, 1b
@@ -30,7 +30,6 @@ strcmp:
 
 .size	strcmp, .-strcmp
 #else
-  li    t2, -1
 
 #if !(__riscv_misaligned_slow || __riscv_misaligned_fast)
   or    a4, a0, a1
@@ -38,22 +37,27 @@ strcmp:
   bnez  a4, .Lmisaligned
 #endif
 
-#if SZREG == 4
-  li a5, 0x7f7f7f7f
-#else
-  ld a5, mask
-#endif
-
   .macro check_one_word i n
     REG_L a2, \i*SZREG(a0)
+
+    #if __riscv_zbb
+      orc.b a4, a2
+    #else
+      #if SZREG == 4
+        li a5, 0x7f7f7f7f
+      #else
+        ld a5, mask
+      #endif
+      and a4, a2, a5
+      or  t1, a2, a5
+      add a4, a4, a5
+      add a4, a4, t1
+    #endif
+
+    li    a5, -1
+    bne   a4, a5, .Lnull\i
+
     REG_L a3, \i*SZREG(a1)
-
-    and   t0, a2, a5
-    or    t1, a2, a5
-    add   t0, t0, a5
-    or    t0, t0, t1
-
-    bne   t0, t2, .Lnull\i
     .if \i+1-\n
       bne   a2, a3, .Lmismatch
     .else
@@ -94,80 +98,99 @@ strcmp:
   # backwards branch to .Lloop contained above
 
 .Lmismatch:
-  # words don't match, but a2 has no null byte.
+#if __riscv_zbb
+    # words don't match, but a2 has no null byte.
+    xor a4, a2, a3
+  
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      ctz a5, a4
+    #else
+      clz a5, a4
+    #endif
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    andi a5, a5, -8
 
-#if __riscv_xlen == 64
-  sll   a4, a2, 48
-  sll   a5, a3, 48
-  bne   a4, a5, .Lmismatch_upper
-  sll   a4, a2, 32
-  sll   a5, a3, 32
-  bne   a4, a5, .Lmismatch_upper
+    srl a2, a2, a5
+    and a2, a2, 0xff
+
+    srl a3, a3, a5
+    and a3, a3, 0xff
+
+    sub a0, a2, a3
+    ret
+
+  #else
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      #if __riscv_xlen == 64
+        sll   a4, a2, 48
+        sll   a5, a3, 48
+        bne   a4, a5, .Lmismatch_upper
+        sll   a4, a2, 32
+        sll   a5, a3, 32
+        bne   a4, a5, .Lmismatch_upper
+      #endif
+      sll   a4, a2, 16
+      sll   a5, a3, 16
+      bne   a4, a5, .Lmismatch_upper
+
+      srl   a4, a2, 8*SZREG-16
+      srl   a5, a3, 8*SZREG-16
+      sub   a0, a4, a5
+      and   a1, a0, 0xff
+      bnez  a1, 1f
+      ret
+
+      .Lmismatch_upper:
+      srl   a4, a4, 8*SZREG-16
+      srl   a5, a5, 8*SZREG-16
+      sub   a0, a4, a5
+      and   a1, a0, 0xff
+      bnez  a1, 1f
+      ret
+
+1:    and   a4, a4, 0xff
+      and   a5, a5, 0xff
+      sub   a0, a4, a5
+      ret
+
+    #else
+      #if __riscv_xlen == 64
+        srl   a4, a2, 48
+        srl   a5, a3, 48
+        bne   a4, a5, .Lmismatch_lower
+        srl   a4, a2, 32
+        srl   a5, a3, 32
+        bne   a4, a5, .Lmismatch_lower
+      #endif
+      srl   a4, a2, 16
+      srl   a5, a3, 16
+      bne   a4, a5, .Lmismatch_lower
+
+      srl	a4, a2, 8
+      srl   a5, a3, 8
+      bne   a4, a5, 1f
+      and   a4, a2, 0xff
+      and   a5, a3, 0xff
+1:    sub	a0, a4, a5
+      ret
+
+      .Lmismatch_lower:
+      srl	a2, a4, 8
+      srl   a3, a5, 8
+      bne   a2, a3, 1f
+      and   a2, a4, 0xff
+      and   a3, a5, 0xff
+1:    sub	a0, a2, a3
+      ret
+
+   #endif
 #endif
-  sll   a4, a2, 16
-  sll   a5, a3, 16
-  bne   a4, a5, .Lmismatch_upper
 
-  srl   a4, a2, 8*SZREG-16
-  srl   a5, a3, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, 1f
-  ret
-
-.Lmismatch_upper:
-  srl   a4, a4, 8*SZREG-16
-  srl   a5, a5, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, 1f
-  ret
-
-1:and   a4, a4, 0xff
-  and   a5, a5, 0xff
-  sub   a0, a4, a5
-  ret
-
-#else
-
-#if __riscv_xlen == 64
-  srl   a4, a2, 48
-  srl   a5, a3, 48
-  bne   a4, a5, .Lmismatch_lower
-  srl   a4, a2, 32
-  srl   a5, a3, 32
-  bne   a4, a5, .Lmismatch_lower
-#endif
-  srl   a4, a2, 16
-  srl   a5, a3, 16
-  bne   a4, a5, .Lmismatch_lower
-
-  srl	a4, a2, 8
-  srl   a5, a3, 8
-  bne   a4, a5, 1f
-  and   a4, a2, 0xff
-  and   a5, a3, 0xff
-1:sub	a0, a4, a5
-  ret
-
-.Lmismatch_lower:
-  srl	a2, a4, 8
-  srl   a3, a5, 8
-  bne   a2, a3, 1f
-  and   a2, a4, 0xff
-  and   a3, a5, 0xff
-1:sub	a0, a2, a3
-  ret
-
-#endif
-	
 .Lmisaligned:
   # misaligned
   lbu   a2, 0(a0)
-  lbu   a3, 0(a1)
   add   a0, a0, 1
+  lbu   a3, 0(a1)
   add   a1, a1, 1
   bne   a2, a3, 1f
   bnez  a2, .Lmisaligned
