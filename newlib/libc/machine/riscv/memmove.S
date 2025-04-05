@@ -14,26 +14,26 @@
 .global memmove
 .type	memmove, @function
 memmove:
-  beqz a2, 2f
+  beqz a2, .Ldone		/* in case there are 0 bytes to be copied, return immediately */
 
-  mv t1, a0
+  mv a4, a0			/* copy the destination address over to a4, since memmove should return that address in a0 at the end */
   li a3, 1
-  bgtu  a1, a0, 1f
+  bgtu  a1, a0, .Lcopy		/* in case of source address > destination address, copy from start to end of the specified memory area */
 
-  li a3, -1
-  addi  a4, a2 , -1
-  add t1, t1, a4
-  add a1, a1, a4
+  li a3, -1			/* otherwhise, start copying from the end of the specified memory area in order to prevent data loss in case of overlapping memory areas.*/
+  add   a4, a4, a2		/* add the number of bytes to be copied to both addresses. this gives us the address one byte past the end of the memory area we want to copy, */
+  add   a1, a1, a2		/* therefore we need to subtract 1 from both addresses in the next step before starting the copying process. */
 
-1:
-  lb t2, 0(a1)
-  sb t2, 0(t1)
-  add   a2, a2, -1
-  add   t1, t1, a3
+.Lincrement:
+  add   a4, a4, a3 		/* in case of source address < destination address, increment both addresses by -1 before copying any data to obtain the correct start addresses */
   add   a1, a1, a3
-  bnez a2, 1b
+.Lcopy:
+  lbu a5, 0(a1)
+  add   a2, a2, -1		/* copy bytes as long as a2 (= the number of bytes to be copied) > 0. the increment is done here to relax the RAW dependency between load and store */
+  sb a5, 0(a4)
+  bnez a2, .Lincrement
 
-2:
+.Ldone:
   ret
 
   .size	memmove, .-memmove
