@@ -18,9 +18,9 @@ strcmp:
 #if defined(PREFER_SIZE_OVER_SPEED) || defined(__OPTIMIZE_SIZE__)
 1:
   lbu   a2, 0(a0)
+  addi   a0, a0, 1
   lbu   a3, 0(a1)
-  add   a0, a0, 1
-  add   a1, a1, 1
+  addi   a1, a1, 1
   bne   a2, a3, 2f
   bnez  a2, 1b
 
