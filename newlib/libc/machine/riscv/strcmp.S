@@ -30,6 +30,8 @@ strcmp:
 
 .size	strcmp, .-strcmp
 #else
+  li    t2, -1
+
 #if !(__riscv_misaligned_slow || __riscv_misaligned_fast)
   or    a4, a0, a1
   and   a4, a4, SZREG-1
@@ -46,13 +48,12 @@ strcmp:
     REG_L a2, \i*SZREG(a0)
     REG_L a3, \i*SZREG(a1)
 
-    and   a4, a2, a5
-    or    t0, a2, a5
-    add   a4, a4, a5
-    or    a4, a4, t0
+    and   t0, a2, a5
+    or    t1, a2, a5
+    add   t0, t0, a5
+    or    t0, t0, t1
 
-    li    a5, -1
-    bne   a4, a5, .Lnull\i
+    bne   t0, t2, .Lnull\i
     .if \i+1-\n
       bne   a2, a3, .Lmismatch
     .else
