@@ -99,78 +99,93 @@ strcmp:
 
 .Lmismatch:
   # words don't match, but a2 has no null byte.
+  #if __riscv_zbb
+    xor a4, a2, a3
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      ctz a5, a4
+    #else
+      clz a5, a4
+    #endif
+    andi a5, a5, -8
 
-#if __riscv_xlen == 64
-  sll   a4, a2, 48
-  sll   a5, a3, 48
-  bne   a4, a5, .Lmismatch_upper
-  sll   a4, a2, 32
-  sll   a5, a3, 32
-  bne   a4, a5, .Lmismatch_upper
-#endif
-  sll   a4, a2, 16
-  sll   a5, a3, 16
-  bne   a4, a5, .Lmismatch_upper
+    srl a2, a2, a5
+    and a2, a2, 0xff
 
-  srl   a4, a2, 8*SZREG-16
-  srl   a5, a3, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, .Lfinal_upper_diff
-  ret
+    srl a3, a3, a5
+    and a3, a3, 0xff
 
-.Lmismatch_upper:
-  srl   a4, a4, 8*SZREG-16
-  srl   a5, a5, 8*SZREG-16
-  sub   a0, a4, a5
-  and   a1, a0, 0xff
-  bnez  a1, .Lfinal_upper_diff
-  ret
+    sub a0, a2, a3
+    ret
+  #else
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      #if __riscv_xlen == 64
+        sll   a4, a2, 48
+        sll   a5, a3, 48
+        bne   a4, a5, .Lmismatch_upper
+        sll   a4, a2, 32
+        sll   a5, a3, 32
+        bne   a4, a5, .Lmismatch_upper
+      #endif
+      sll   a4, a2, 16
+      sll   a5, a3, 16
+      bne   a4, a5, .Lmismatch_upper
 
-.Lfinal_upper_diff:
-  and   a4, a4, 0xff
-  and   a5, a5, 0xff
-  sub   a0, a4, a5
-  ret
+      srl   a4, a2, 8*SZREG-16
+      srl   a5, a3, 8*SZREG-16
+      sub   a0, a4, a5
+      and   a1, a0, 0xff
+      bnez  a1, .Lfinal_upper_diff
+      ret
 
-#else
+      .Lmismatch_upper:
+        srl   a4, a4, 8*SZREG-16
+        srl   a5, a5, 8*SZREG-16
+        sub   a0, a4, a5
+        and   a1, a0, 0xff
+        bnez  a1, .Lfinal_upper_diff
+        ret
 
-#if __riscv_xlen == 64
-  srl   a4, a2, 48
-  srl   a5, a3, 48
-  bne   a4, a5, .Lmismatch_lower
-  srl   a4, a2, 32
-  srl   a5, a3, 32
-  bne   a4, a5, .Lmismatch_lower
-#endif
-  srl   a4, a2, 16
-  srl   a5, a3, 16
-  bne   a4, a5, .Lmismatch_lower
+      .Lfinal_upper_diff:
+        and   a4, a4, 0xff
+        and   a5, a5, 0xff
+        sub   a0, a4, a5
+        ret
+    #else
+      #if __riscv_xlen == 64
+        srl   a4, a2, 48
+        srl   a5, a3, 48
+        bne   a4, a5, .Lmismatch_lower
+        srl   a4, a2, 32
+        srl   a5, a3, 32
+        bne   a4, a5, .Lmismatch_lower
+      #endif
+      srl   a4, a2, 16
+      srl   a5, a3, 16
+      bne   a4, a5, .Lmismatch_lower
 
-  srl	a4, a2, 8
-  srl   a5, a3, 8
-  bne   a4, a5, .Lbyte_diff
-  and   a4, a2, 0xff
-  and   a5, a3, 0xff
+      srl	  a4, a2, 8
+      srl   a5, a3, 8
+      bne   a4, a5, .Lbyte_diff
+      and   a4, a2, 0xff
+      and   a5, a3, 0xff
 
-.Lbyte_diff:
-  sub	a0, a4, a5
-  ret
+      .Lbyte_diff:
+        sub	a0, a4, a5
+        ret
 
-.Lmismatch_lower:
-  srl	a2, a4, 8
-  srl   a3, a5, 8
-  bne   a2, a3, .Lfinal_lower_diff
-  and   a2, a4, 0xff
-  and   a3, a5, 0xff
+      .Lmismatch_lower:
+        srl	  a2, a4, 8
+        srl   a3, a5, 8
+        bne   a2, a3, .Lfinal_lower_diff
+        and   a2, a4, 0xff
+        and   a3, a5, 0xff
 
-.Lfinal_lower_diff:
-  sub	a0, a2, a3
-  ret
-
-#endif
+      .Lfinal_lower_diff:
+        sub	a0, a2, a3
+        ret
+    #endif
+  #endif
 	
 .Lmisaligned:
   # misaligned
