@@ -34,6 +34,31 @@ __inhibit_loop_to_libcall memmove (void *dst_void, const void *src_void, size_t 
 			aligned_dst = (uintxlen_t*)dst;
 			aligned_src = (uintxlen_t*)src;
 
+			/* Copy 9X SZREG bytes at a time if possible.  */
+			while (length >= (SZREG*9)) {
+				uintxlen_t dst0 = *--aligned_src;
+				uintxlen_t dst1 = *--aligned_src;
+				uintxlen_t dst2 = *--aligned_src;
+				uintxlen_t dst3 = *--aligned_src;
+				uintxlen_t dst4 = *--aligned_src;
+				uintxlen_t dst5 = *--aligned_src;
+				uintxlen_t dst6 = *--aligned_src;
+				uintxlen_t dst7 = *--aligned_src;
+				uintxlen_t dst8 = *--aligned_src;
+
+				*--aligned_dst = dst0;
+				*--aligned_dst = dst1;
+				*--aligned_dst = dst2;
+				*--aligned_dst = dst3;
+				*--aligned_dst = dst4;
+				*--aligned_dst = dst5;
+				*--aligned_dst = dst6;
+				*--aligned_dst = dst7;
+				*--aligned_dst = dst8;
+
+				length -= SZREG*9;
+			}
+
 			/* Copy SZREG bytes at a time if possible.  */
 			while (length >= SZREG) {
 				*--aligned_dst = *--aligned_src;
@@ -56,13 +81,29 @@ __inhibit_loop_to_libcall memmove (void *dst_void, const void *src_void, size_t 
 			aligned_dst = (uintxlen_t*)dst;
 			aligned_src = (uintxlen_t*)src;
 
-			/* Copy 4X SZREG bytes at a time if possible.  */
-			while (length >= (SZREG<<2)) {
-				*aligned_dst++ = *aligned_src++;
-				*aligned_dst++ = *aligned_src++;
-				*aligned_dst++ = *aligned_src++;
-				*aligned_dst++ = *aligned_src++;
-				length -= (SZREG<<2);
+			/* Copy 9X SZREG bytes at a time if possible.  */
+			while (length >= (SZREG*9)) {
+				uintxlen_t dst0 = *aligned_src++;
+				uintxlen_t dst1 = *aligned_src++;
+				uintxlen_t dst2 = *aligned_src++;
+				uintxlen_t dst3 = *aligned_src++;
+				uintxlen_t dst4 = *aligned_src++;
+				uintxlen_t dst5 = *aligned_src++;
+				uintxlen_t dst6 = *aligned_src++;
+				uintxlen_t dst7 = *aligned_src++;
+				uintxlen_t dst8 = *aligned_src++;
+
+				*aligned_dst++ = dst0;
+				*aligned_dst++ = dst1;
+				*aligned_dst++ = dst2;
+				*aligned_dst++ = dst3;
+				*aligned_dst++ = dst4;
+				*aligned_dst++ = dst5;
+				*aligned_dst++ = dst6;
+				*aligned_dst++ = dst7;
+				*aligned_dst++ = dst8;
+
+				length -= SZREG*9;
 			}
 
 
