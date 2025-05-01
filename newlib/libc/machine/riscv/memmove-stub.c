@@ -7,14 +7,13 @@
 #include "sys/asm.h"
 #include "../../string/local.h"
 
-
-#if !defined(__riscv_misaligned_avoid)
-#define UNALIGNED_XLEN(X,Y) (0)
+static inline uint8_t __libc_aligned_xlen(void *dst, const void *src) {
+#if defined(__riscv_misaligned_fast)
+	return 1;
 #else
-/* Nonzero if either X or Y is not aligned to XLEN. (analogous to macro in ../../string/local.h)  */
-#define UNALIGNED_XLEN(X,Y) (((uintxlen_t)X & (SZREG-1)) | ((uintxlen_t)Y & (SZREG-1)))
+	return !(((uintxlen_t)src & (SZREG-1)) | ((uintxlen_t)dst & (SZREG-1)));
 #endif
-
+}
 
 /*SUPPRESS 20*/
 void *
@@ -30,7 +29,7 @@ __inhibit_loop_to_libcall memmove (void *dst_void, const void *src_void, size_t 
 		src += length;
 		dst += length;
 
-		if (length >= SZREG && !UNALIGNED_XLEN(src, dst)) {
+		if (length >= SZREG && __libc_aligned_xlen(dst, src)) {
 
 			aligned_dst = (uintxlen_t*)dst;
 			aligned_src = (uintxlen_t*)src;
@@ -52,7 +51,7 @@ __inhibit_loop_to_libcall memmove (void *dst_void, const void *src_void, size_t 
 		/* Use optimizing algorithm for a non-destructive copy to closely
 		   match memcpy. If the size is small or either SRC or DST is unaligned,
 		   then punt into the byte copy loop.  This should be rare.  */
-		if (length >= SZREG && !UNALIGNED_XLEN(src, dst)) {
+		if (length >= SZREG && __libc_aligned_xlen(dst, src)) {
 
 			aligned_dst = (uintxlen_t*)dst;
 			aligned_src = (uintxlen_t*)src;
